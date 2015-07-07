@@ -16,14 +16,14 @@ import rpm.RpmPlugin.Names.RpmDaemonLogFileReplacement
 import JavaAppPackaging.autoImport.{ bashScriptConfigLocation, bashScriptEnvConfigLocation }
 
 /**
- * This class contains the default settings for creating and deploying an archetypical Java application.
- *  A Java application archetype is defined as a project that has a main method and is run by placing
- *  all of its JAR files on the classpath and calling that main method.
- *
- *  This doesn't create the best of distributions, but it can simplify the distribution of code.
- *
- *  **NOTE:  EXPERIMENTAL**   This currently only supports debian upstart scripts.
- */
+  * This class contains the default settings for creating and deploying an archetypical Java application.
+  *  A Java application archetype is defined as a project that has a main method and is run by placing
+  *  all of its JAR files on the classpath and calling that main method.
+  *
+  *  This doesn't create the best of distributions, but it can simplify the distribution of code.
+  *
+  *  **NOTE:  EXPERIMENTAL**   This currently only supports debian upstart scripts.
+  */
 object JavaServerAppPackaging extends AutoPlugin {
   import ServerLoader._
   import LinuxPlugin.Users
@@ -42,12 +42,12 @@ object JavaServerAppPackaging extends AutoPlugin {
   protected def etcDefaultTemplateSource: java.net.URL = getClass.getResource(ETC_DEFAULT + "-template")
 
   /**
-   * general settings which apply to all linux server archetypes
-   *
-   * - script replacements
-   * - logging directory
-   * - config directory
-   */
+    * general settings which apply to all linux server archetypes
+    *
+    * - script replacements
+    * - logging directory
+    * - config directory
+    */
   def linuxSettings: Seq[Setting[_]] = Seq(
     javaOptions in Linux <<= javaOptions in Universal,
     // === logging directory mapping ===
@@ -102,18 +102,27 @@ object JavaServerAppPackaging extends AutoPlugin {
         linuxScriptReplacements in Debian,
         target in Universal,
         serverLoading in Debian) map makeStartScript,
-      linuxPackageMappings <++= (packageName, linuxMakeStartScript, serverLoading, defaultLinuxStartScriptLocation) map startScriptMapping
+      linuxPackageMappings <++= (packageName, linuxMakeStartScript, serverLoading, defaultLinuxStartScriptLocation) map startScriptMapping,
+
+      // === Maintainer scripts ===
+      maintainerScripts := {
+	val scripts = (maintainerScripts in Debian).value
+	val replacements = (linuxScriptReplacements in Debian).value
+	val contentOf = getScriptContent(Debian, replacements) _
+
+	scripts ++ Map(
+	  Preinst -> (scripts.getOrElse(Preinst, Nil) :+ contentOf(Preinst)),
+	  Postinst -> (scripts.getOrElse(Postinst, Nil) :+ contentOf(Postinst)),
+	  Prerm -> (scripts.getOrElse(Prerm, Nil) :+ contentOf(Prerm)),
+	  Postrm -> (scripts.getOrElse(Postrm, Nil) :+ contentOf(Postrm))
+	)
+      }
     )) ++ Seq(
       // === Daemon User and Group ===
       daemonUser in Debian <<= daemonUser in Linux,
       daemonUserUid in Debian <<= daemonUserUid in Linux,
       daemonGroup in Debian <<= daemonGroup in Linux,
-      daemonGroupGid in Debian <<= daemonGroupGid in Linux,
-      // === Maintainer scripts ===
-      debianMakePreinstScript <<= (target in Universal, serverLoading in Debian, linuxScriptReplacements) map makeMaintainerScript(Preinst),
-      debianMakePostinstScript <<= (target in Universal, serverLoading in Debian, linuxScriptReplacements) map makeMaintainerScript(Postinst),
-      debianMakePrermScript <<= (target in Universal, serverLoading in Debian, linuxScriptReplacements) map makeMaintainerScript(Prerm),
-      debianMakePostrmScript <<= (target in Universal, serverLoading in Debian, linuxScriptReplacements) map makeMaintainerScript(Postrm)
+      daemonGroupGid in Debian <<= daemonGroupGid in Linux
     )
   }
 
@@ -180,7 +189,7 @@ object JavaServerAppPackaging extends AutoPlugin {
   private[this] def startScriptName(loader: ServerLoader, config: Configuration): String = (loader, config.name) match {
     // SystemV has two different start scripts
     case (SystemV, name) => s"start-$name-template"
-    case _               => "start-template"
+    case _ => "start-template"
   }
 
   private[this] def makeStartScriptReplacements(
@@ -193,7 +202,7 @@ object JavaServerAppPackaging extends AutoPlugin {
     // Upstart cannot handle empty values
     val (startOn, stopOn) = loader match {
       case Upstart => (requiredStartFacilities.map("start on started " + _), requiredStopFacilities.map("stop on stopping " + _))
-      case _       => (requiredStartFacilities, requiredStopFacilities)
+      case _ => (requiredStartFacilities, requiredStopFacilities)
     }
     Seq(
       "start_runlevels" -> startRunlevels.getOrElse(""),
@@ -253,29 +262,30 @@ object JavaServerAppPackaging extends AutoPlugin {
     Some(script)
   }
 
-  protected def makeMaintainerScript(
-    scriptName: String,
-    template: Option[URL] = None, archetype: String = ARCHETYPE, config: Configuration = Debian)(
-      tmpDir: File, loader: ServerLoader, replacements: Seq[(String, String)]): Option[File] = {
-    val scriptBits = JavaServerBashScript(scriptName, archetype, config, replacements, template) getOrElse {
-      sys.error(s"Couldn't load [$scriptName] for config [${config.name}] in archetype [$archetype]")
+  /**
+    *
+    * @param config for which plugin (Debian, Rpm)
+    * @param replacements for the placeholders
+    * @param scriptName that should be loaded
+    * @return script lines
+    */
+  private[this] def getScriptContent(config: Configuration, replacements: Seq[(String, String)])(scriptName: String): String = {
+    JavaServerBashScript(scriptName, ARCHETYPE, config, replacements) getOrElse {
+      sys.error(s"Couldn't load [$scriptName] for config [${config.name}] in archetype [$ARCHETYPE]")
     }
-    val script = tmpDir / "tmp" / "bin" / (config.name + scriptName)
-    IO.write(script, scriptBits)
-    Some(script)
   }
 
   /**
-   * Creates the etc-default file, which will contain the basic configuration
-   * for an app.
-   *
-   * @param name of the etc-default config file
-   * @param tmpDir to store the resulting file in (e.g. target in Universal)
-   * @param source of etc-default script
-   * @param replacements for placeholders in etc-default script
-   *
-   * @return Some(file: File)
-   */
+    * Creates the etc-default file, which will contain the basic configuration
+    * for an app.
+    *
+    * @param name of the etc-default config file
+    * @param tmpDir to store the resulting file in (e.g. target in Universal)
+    * @param source of etc-default script
+    * @param replacements for placeholders in etc-default script
+    *
+    * @return Some(file: File)
+    */
   protected def makeEtcDefaultScript(
     name: String, tmpDir: File, source: java.net.URL, replacements: Seq[(String, String)]): Option[File] = {
     val scriptBits = TemplateWriter.generateScript(source, replacements)
