@@ -5,6 +5,7 @@ package rpm
 import linux.{ LinuxPackageMapping, LinuxFileMetaData }
 import sbt._
 import com.typesafe.sbt.packager.linux.LinuxSymlink
+import com.typesafe.sbt.packager.rpm.RpmPlugin.Names._
 import java.io.File
 
 case class RpmMetadata(
@@ -51,20 +52,10 @@ case class RpmDependencies(
   }
 }
 
-case class RpmScripts(
-  pretrans: Option[String] = None,
-  pre: Option[String] = None,
-  post: Option[String] = None,
-  verifyscript: Option[String] = None,
-  posttrans: Option[String] = None,
-  preun: Option[String] = None,
-  postun: Option[String] = None) {
-  def contents(): String = {
-    val labelledScripts = Seq("%pretrans", "%pre", "%post", "%verifyscript", "%posttrans", "%preun", "%postun")
-      .zip(Seq(pretrans, pre, post, verifyscript, posttrans, preun, postun))
-    labelledScripts.collect { case (a, Some(b)) => a + "\n" + b }.mkString("\n\n")
+case class RpmScripts(maintainerScripts: Map[String, Seq[String]] = Map()) {
+  def contents(): String = maintainerScripts.foldLeft("") {
+    case (output, (scriptlet, content)) => s"$output\n\n%$scriptlet\n${content mkString "\n"}"
   }
-
 }
 
 case class RpmSpec(

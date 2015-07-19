@@ -41,19 +41,12 @@ trait RpmKeys {
   val rpmSpecConfig = TaskKey[RpmSpec]("rpm-spec-config", "All the configuration for an RPM .spec file.")
 
   // SCRIPTS
-  val rpmScripts = SettingKey[RpmScripts]("rpm-scripts", "Configuration of pre- and post-integration scripts.")
+  val rpmScripts = TaskKey[RpmScripts]("rpm-scripts", "Configuration of pre- and post-integration scripts.")
   val rpmScriptsDirectory = SettingKey[File](
     "rpm-scriptlets-directory",
     "Directory where all debian control scripts reside. Default is 'src/rpm/scriptlets'"
   )
 
-  val rpmPretrans = SettingKey[Option[String]]("rpm-pretrans", "%pretrans scriptlet")
-  val rpmPre = SettingKey[Option[String]]("rpm-pre", "%pre scriptlet")
-  val rpmVerifyscript = SettingKey[Option[String]]("rpm-verifyscript", "%verifyscript scriptlet")
-  val rpmPost = SettingKey[Option[String]]("rpm-post", "%post scriptlet")
-  val rpmPosttrans = SettingKey[Option[String]]("rpm-posttrans", "%posttrans scriptlet")
-  val rpmPreun = SettingKey[Option[String]]("rpm-preun", "%preun scriptlet")
-  val rpmPostun = SettingKey[Option[String]]("rpm-postun", "%postun scriptlet")
   val rpmBrpJavaRepackJars = SettingKey[Boolean]("brp-java-repack-jars", """Overrides the __os_post_install scriptlet
       http://swaeku.github.io/blog/2013/08/05/how-to-disable-brp-java-repack-jars-during-rpm-build/ for details""")
 
