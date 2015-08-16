@@ -77,6 +77,15 @@ object RpmPlugin extends AutoPlugin {
     rpmConflicts := Seq.empty,
     rpmChangelogFile := None,
     rpmBrpJavaRepackJars := false,
+
+    rpmPretrans := None,
+    rpmPre := None,
+    rpmPost := None,
+    rpmVerifyscript := None,
+    rpmPosttrans := None,
+    rpmPreun := None,
+    rpmPostun := None,
+
     rpmScriptsDirectory <<= sourceDirectory apply (_ / "rpm" / Names.Scriptlets),
     // Explicitly defer  default settings to generic Linux Settings.
     maintainerScripts in Rpm <<= maintainerScripts in Linux,
@@ -105,9 +114,9 @@ object RpmPlugin extends AutoPlugin {
 	  scripts
 	}
       },
-      rpmScripts := RpmScripts(maintainerScripts.value),
+      rpmScripts := RpmScripts.fromMaintainerScripts(maintainerScripts.value),
       rpmSpecConfig <<=
-        (rpmMetadata, rpmDescription, rpmDependencies, rpmScripts, linuxPackageMappings, linuxPackageSymlinks) map RpmSpec,
+	(rpmMetadata, rpmDescription, rpmDependencies, rpmScripts, linuxPackageMappings, linuxPackageSymlinks) map RpmSpec,
       packageBin <<= (rpmSpecConfig, target, streams) map { (spec, dir, s) =>
         spec.validate(s.log)
         RpmHelper.buildRpm(spec, dir, s.log)
