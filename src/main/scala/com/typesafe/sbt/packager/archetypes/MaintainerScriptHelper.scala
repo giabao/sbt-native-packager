@@ -1,7 +1,7 @@
 package com.typesafe.sbt.packager.archetypes
 
 import sbt._
-import JavaAppPackaging.autoImport.{ maintainerScripts }
+import com.typesafe.sbt.SbtNativePackager.autoImport.maintainerScripts
 
 /**
  * == Maintainer Script Helper ==
@@ -11,7 +11,7 @@ import JavaAppPackaging.autoImport.{ maintainerScripts }
 trait MaintainerScriptHelper {
 
   /**
-   * Use this method override preexisting configurations with custom file
+   * Use this method to override preexisting configurations with custom file
    * definitions.
    *
    * @example {{{
@@ -31,6 +31,58 @@ trait MaintainerScriptHelper {
       .map { script =>
 	script.getName -> IO.readLines(script)
       }.toMap
+  }
+
+  /**
+   * Use this method to append additional script content to specific maintainer scripts.
+   *
+   * @example Adding content from a string
+   * {{{
+   * import RpmConstants._
+   * maintainerScripts in Rpm := maintainerScriptsAppend((maintainerScripts in Rpm).value)(
+   *    Pretrans -> "echo 'hello, world'",
+   *    Post -> s"echo 'installing ${(packageName in Rpm).value}'"
+   * )
+   * }}}
+   *
+   *
+   * @param current maintainer scripts
+   * @param scripts scriptName -> scriptContent pairs
+   * @return maintainerScripts with appended `scripts`
+   * @see [[maintainerScriptsAppendFromFile]]
+   */
+  def maintainerScriptsAppend(current: Map[String, Seq[String]] = Map.empty)(scripts: (String, String)*): Map[String, Seq[String]] = {
+    val appended = scripts.map {
+      case (key, script) => key -> (current.getOrElse(key, Seq.empty) :+ script)
+    }.toMap
+    current ++ appended
+  }
+
+  /**
+   * Use this method to append additional script content to specific maintainer scripts.
+   * Note that you won't have any scriptReplacements available.
+   *
+   * @example Adding content from a string
+   * {{{
+   * import RpmConstants._
+   * maintainerScripts in Rpm := maintainerScriptsAppendFromFile((maintainerScripts in Rpm).value)(
+   *    Pretrans -> (sourceDirectory.value / "rpm" / "pretrans"),
+   *    Post -> (sourceDirectory.value / "rpm" / "posttrans")
+   * )
+   * }}}
+   *
+   *
+   * @param current maintainer scripts
+   * @param scripts scriptName -> scriptFile pairs
+   * @return maintainerScripts with appended `scripts`
+   * @see [[maintainerScriptsAppend]] for pure strings where you can insert arbitrary settings and tasks values
+   */
+  def maintainerScriptsAppendFromFile(current: Map[String, Seq[String]] = Map.empty)(scripts: (String, File)*): Map[String, Seq[String]] = {
+    val appended = scripts.map {
+      case (key, script) if script.exists && script.isFile => key -> (current.getOrElse(key, Seq.empty) ++ IO.readLines(script))
+      case (key, script)                                   => sys.error(s"The maintainer script $key doesn't exist here: ${script.getAbsolutePath}")
+    }.toMap
+    current ++ appended
   }
 
 }

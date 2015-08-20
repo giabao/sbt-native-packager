@@ -170,27 +170,11 @@ Meta Settings
 
 Scriptlet Settings
 ~~~~~~~~~~~~~~~~~~
-    
-  ``rpmPretrans`` 
-    The ``%pretrans`` scriptlet to run.
-    
-  ``rpmPre``
-    The ``%pre`` scriptlet to run.
-    
-  ``rpmVerifyScript``
-    The ``%verifyscript%`` scriptlet to run
-    
-  ``rpmPost``
-    The ``%post`` scriptlet to run
-    
-  ``rpmPosttrans``
-    The ``%posttrans`` scriptlet to run
-    
-  ``rpmPreun``
-    The ``%preun`` scriptlet to run.
-    
-  ``rpmPostun``
-    The ``%postun`` scriptlet to run.
+
+  ``maintainerScripts in Rpm``
+    Contains the scriptles being injected into the specs file. Currently supports all
+    previous scriptlets: ``%pretrans``, ``%pre``, ``%verifyscript%``, ``%post``, ``%posttrans``,
+    ``%preun`` and  ``%postun``
     
   ``rpmBrpJavaRepackJars``
     appends ``__os_install_post`` scriptlet to ``rpmPre`` avoiding jar repackaging
@@ -284,33 +268,36 @@ Apply the following changes to the default init start script.  You can find this
 Scriptlet Changes
 ~~~~~~~~~~~~~~~~~
 
-Changing the scripts can be done in two ways. Override the ``rpmPre``, ``rpmPostun`` etc. scripts.
+Changing the scripts can be done in two ways. Override the ``maintainerScripts in Rpm``.
 For example:
 
 .. code-block:: scala
 
    // overriding
-   rpmPre := Some("""## override all other enhancements
-      echo "I take care of everything myself"
-   """)
+   import RpmConstants._
+   maintainerScripts in Rpm := Map(
+     Pre -> Seq("""echo "pre-install""""),
+     Post -> Seq("""echo "post-install""""),
+     Pretrans -> Seq("""echo "pretrans""""),
+     Posttrans -> Seq("""echo "posttrans""""),
+     Preun -> Seq("""echo "pre-uninstall""""),
+     Postun -> Seq("""echo "post-uninstall"""")
+   )
    
-   // appending different stuff depending if previous content is there
-   rpmPostun := rpmPost.value.map { content =>
-     s"""|$content
-        |echo "I append this to the current content
-        |""".stripMargin
-     }.orElse {
-      Option("""echo "There wasn't any previous content"
-      """.stripMargin)
-     }
+   // appending with strings and replacements
+   import RpmConstants._
+   maintainerScripts in Rpm := maintainerScriptsAppend((maintainerScripts in Rpm).value)(
+      Pretrans -> "echo 'hello, world'",
+      Post -> s"echo 'installing ${(packageName in Rpm).value}'"
+   )
 
-   // just appending
-   rpmPostun := {
-     val prev = rpmPostun.value.getOrElse("")
-     Some(s"""|$prev
-              | echo "Hello you"
-              |""".stripMargin)
-   }
+   // appending from a different file
+   import RpmConstants._
+   maintainerScripts in Rpm := maintainerScriptsAppendFromFile((maintainerScripts in Rpm).value)(
+      Pretrans -> (sourceDirectory.value / "rpm" / "pretrans"),
+      Post -> (sourceDirectory.value / "rpm" / "posttrans")
+   )
+
 
 or place your new scripts in the ``src/rpm/scriptlets`` folder. For example:
 

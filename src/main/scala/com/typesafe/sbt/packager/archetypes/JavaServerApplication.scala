@@ -5,13 +5,13 @@ package archetypes
 import sbt._
 import sbt.Keys.{ target, mainClass, sourceDirectory, streams, javaOptions, run }
 import SbtNativePackager.{ Debian, Rpm, Universal }
-import packager.Keys.{ packageName }
+import packager.Keys.{ packageName, maintainerScripts }
 import linux.{ LinuxFileMetaData, LinuxPackageMapping, LinuxSymlink, LinuxPlugin }
 import linux.LinuxPlugin.autoImport._
 import debian.DebianPlugin
 import debian.DebianPlugin.autoImport.{ debianMakePreinstScript, debianMakePostinstScript, debianMakePrermScript, debianMakePostrmScript }
 import rpm.RpmPlugin
-import rpm.RpmPlugin.autoImport.{ rpmPre, rpmPost, rpmPostun, rpmPreun, rpmScriptsDirectory, rpmDaemonLogFile }
+import rpm.RpmPlugin.autoImport.{ rpmPre, rpmPost, rpmPostun, rpmPreun, rpmScriptsDirectory, rpmDaemonLogFile, RpmConstants }
 import rpm.RpmPlugin.Names.RpmDaemonLogFileReplacement
 import JavaAppPackaging.autoImport.{ bashScriptConfigLocation, bashScriptEnvConfigLocation }
 
